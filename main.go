@@ -43,11 +43,7 @@ func CreateScheduler() Scheduler {
 	errChan := make(chan error)
 	ch := make(chan func() (string, error))
 	result := make([]string, 0)
-	tasks := make([]func() (string, error), 0)
 	resultChan := make(chan string)
-	for i := 0; i < 10000; i++ {
-		tasks = append(tasks, createHeavyTask(i))
-	}
 
 	sched := Scheduler{
 		wg:          &wg,
@@ -56,11 +52,14 @@ func CreateScheduler() Scheduler {
 		result:      result,
 		errChan:     errChan,
 		ch:          ch,
-		tasks:       tasks,
 		resultChan:  resultChan,
 		endChannel:  endChan,
 	}
 	return sched
+}
+
+func (self *Scheduler) AddTask(fn func() (string, error)) {
+	self.tasks = append(self.tasks, fn)
 }
 func (self *Scheduler) Start() {
 	go func() {
@@ -115,6 +114,10 @@ label:
 }
 
 func main() {
+
 	scheduler := CreateScheduler()
+	for i := 0; i < 10000; i++ {
+		scheduler.AddTask(createHeavyTask(i))
+	}
 	scheduler.Start()
 }
