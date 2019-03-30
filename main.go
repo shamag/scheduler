@@ -1,8 +1,10 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"sync"
+	"time"
 )
 
 type Scheduler struct {
@@ -17,13 +19,25 @@ type Scheduler struct {
 	endChannel  chan struct{}
 }
 
-func heavyTask() (string, error) {
-	return "done", nil
+func createHeavyTask(i int) func() (string, error) {
+	return func() (string, error) {
+		fmt.Printf("Запуск функции %d \n", i)
+		//isErr := rand.Int31n(3)
+
+		if i == 5004 {
+			fmt.Printf("error happens fn %d \n", i)
+			return "", errors.New("errors happened")
+		}
+		time.Sleep(time.Millisecond)
+		fmt.Printf("завершение функции %d \n", i)
+		return fmt.Sprintf("done %d", i), nil
+	}
+
 }
 
 func CreateScheduler() Scheduler {
 	var wg sync.WaitGroup
-	threadCount := 4
+	threadCount := 12
 	semChan := make(chan struct{}, threadCount)
 	endChan := make(chan struct{})
 	errChan := make(chan error)
@@ -31,14 +45,14 @@ func CreateScheduler() Scheduler {
 	result := make([]string, 0)
 	tasks := make([]func() (string, error), 0)
 	resultChan := make(chan string)
-	for i := 0; i < 10; i++ {
-		tasks = append(tasks, heavyTask)
+	for i := 0; i < 10000; i++ {
+		tasks = append(tasks, createHeavyTask(i))
 	}
 
 	sched := Scheduler{
 		wg:          &wg,
 		semChan:     semChan,
-		threadCount: 4,
+		threadCount: 8,
 		result:      result,
 		errChan:     errChan,
 		ch:          ch,
@@ -57,36 +71,34 @@ func (self *Scheduler) Start() {
 	}()
 
 	self.wg.Add(1)
-	fmt.Println("incr wg")
-	println("старт")
+	// println("старт")
 	go func() {
 		for fn := range self.ch {
 			self.semChan <- struct{}{}
 			self.wg.Add(1)
-			fmt.Println("incr wg")
 			go func(fn func() (string, error)) {
-				fmt.Println("Запуск функции")
 				res, err := fn()
 				if err != nil {
 					self.errChan <- err
+					return
 				}
 				self.resultChan <- res
 				<-self.semChan
 				self.wg.Done()
-				fmt.Println("decr wg")
+				return
+
 			}(fn)
 		}
-		fmt.Println("decr wg")
 		self.wg.Done()
 	}()
 	go func() {
 		self.wg.Wait()
-		fmt.Println("завершение")
+		//fmt.Println("завершение")
 
 		self.endChannel <- struct{}{}
 
 	}()
-	fmt.Println("Запуск слушателей")
+	//fmt.Println("Запуск слушателей")
 label:
 	for {
 		select {
