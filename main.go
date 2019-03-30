@@ -84,8 +84,6 @@ func (self *Scheduler) Start() {
 				self.resultChan <- res
 				<-self.semChan
 				self.wg.Done()
-				return
-
 			}(fn)
 		}
 		self.wg.Done()
