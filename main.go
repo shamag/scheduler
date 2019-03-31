@@ -32,7 +32,7 @@ func createHeavyTask(i int, isErr bool) func(bool) (string, error) {
 			return fmt.Sprintf("err %d", i), errors.New("errors happened")
 		}
 		if !isInstant {
-			time.Sleep(time.Second * 2)
+			time.Sleep(time.Microsecond * 1)
 			fmt.Printf("завершение функции %d \n", i)
 		}
 
@@ -102,6 +102,8 @@ func (self *Scheduler) Start() {
 				for {
 					select {
 					default:
+						dbg, _ := fn(true)
+						fmt.Println("fn taken", dbg)
 						res, err := fn(false)
 						if err != nil {
 							// fmt.Println("err taken")
@@ -140,8 +142,8 @@ func (self *Scheduler) Start() {
 func main() {
 
 	scheduler := CreateScheduler()
-	for i := 0; i < 30; i++ {
-		scheduler.AddTask(createHeavyTask(i, i == 17))
+	for i := 0; i < 10000; i++ {
+		scheduler.AddTask(createHeavyTask(i, i == 6000))
 	}
 	scheduler.Start()
 
